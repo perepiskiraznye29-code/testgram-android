@@ -34,17 +34,25 @@ jobs:
           find TMessagesProj/ -name "build.gradle" -exec sed -i 's/applicationId .*/applicationId "org.mechagram.web"/g' {} +
           find TMessagesProj/src/main/res/ -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Mechagram<\/string>/g' {} +
 
-          # 3. Подстановка публичного RSA-ключа сервера в Datacenter.cpp
-          sed -i '/static std::string public_key =/,/-----END RSA PUBLIC KEY-----";/c\
-          static std::string public_key = \
-                  "-----BEGIN RSA PUBLIC KEY-----\\n"\
-                  "MIIBCgKCAQEAy/wGikIrrcWObe+EuCVb9JtQNAzpAyI5nKjQ/4DGspGY1CFNNViV\\n"\
-                  "XDmtjM/ljiBVaV2Sx5fBeM/kjcT6mRaByNhu04xhZqEmWRkr4sTXnI3NwxMucepK\\n"\
-                  "mBd9V6S53BGEoXqCV/OTkw7K9kOKwtXueBl3J+PlXjeUCsy5r1bVYEOJq2Gh5sNC\\n"\
-                  "EH/zc2GC08wC4A85vCx72bx56XXw4K+gZb1ou1ncR/GTshZu+nNrxgzGjb1kC/XJ\\n"\
-                  "BNDNC3zPmd5JqKVrf33YjL/5Wgc76k6LA3P4t/d/h6KDzNJkPMUYaazqt4EQeTFW\\n"\
-                  "4zAiiMVELMb1VBekejvTcFwuxzTkdj3T8QIDAQAB\\n"\
-                  "-----END RSA PUBLIC KEY-----";' TMessagesProj/jni/tgnet/Datacenter.cpp
+          # 3. Безопасная инъекция публичного RSA-ключа в Datacenter.cpp без поломки синтаксиса
+          python3 -c '
+          path = "TMessagesProj/jni/tgnet/Datacenter.cpp"
+          new_key = """static std::string public_key = 
+                  "-----BEGIN RSA PUBLIC KEY-----\\n"
+                  "MIIBCgKCAQEAy/wGikIrrcWObe+EuCVb9JtQNAzpAyI5nKjQ/4DGspGY1CFNNViV\\n"
+                  "XDmtjM/ljiBVaV2Sx5fBeM/kjcT6mRaByNhu04xhZqEmWRkr4sTXnI3NwxMucepK\\n"
+                  "mBd9V6S53BGEoXqCV/OTkw7K9kOKwtXueBl3J+PlXjeUCsy5r1bVYEOJq2Gh5sNC\\n"
+                  "EH/zc2GC08wC4A85vCx72bx56XXw4K+gZb1ou1ncR/GTshZu+nNrxgzGjb1kC/XJ\\n"
+                  "BNDNC3zPmd5JqKVrf33YjL/5Wgc76k6LA3P4t/d/h6KDzNJkPMUYaazqt4EQeTFW\\n"
+                  "4zAiiMVELMb1VBekejvTcFwuxzTkdj3T8QIDAQAB\\n"
+                  "-----END RSA PUBLIC KEY-----";"""
+          with open(path, "r") as f:
+              content = f.read()
+          import re
+          content = re.sub(r"static std::string public_key = .*?-----END RSA PUBLIC KEY-----\";", new_key, content, flags=re.DOTALL)
+          with open(path, "w") as f:
+              f.write(content)
+          '
 
       - name: Make Gradle Executable
         run: chmod +x gradlew
